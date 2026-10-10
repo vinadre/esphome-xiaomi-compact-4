@@ -5,38 +5,61 @@ This project uses standard ESPHome components to replace original Xiaomi firmwar
 ## How to use
 
 ### Compilation
- See ESPHome documentation about [packages](https://esphome.io/components/packages/), if you don't know how to use it.
  
-Minimal working config:
-```yaml
-packages:
-  main: 
-    url: https://github.com/m5k10/esphome-xiaomi-compact-4
-    files: 
-      - xiaomi-compact-4.yaml
+Create an empty project in Esphome
+![Serial port](resources/1.png)
+![Serial port](resources/2.png)
+![Serial port](resources/3.png)
 
-esphome:
-  name: xiaomi-compact-4
-  friendly_name: Xiaomi Compact 4
-
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-```
+Clic on Install to Compile and download the binary
+![Serial port](resources/4.png)
+![Serial port](resources/5.png)
+![Serial port](resources/6.png)
 
 ### Flashing
 The device contains an ESP32-WROOM-32D module on the main PCB.
 1. To replace original firmware, you need to disassemble the device and connect serial adapter to the pins next to ESP32:
 
 ![Serial port](resources/serial.jpg)
+![Serial port](resources/solder1.png)
 
 To activate the bootloader mode, you need to short GPIO0 to the GND while powering up the device.
-2. Backup your original firmware in case you need to restore it:
+![Serial port](resources/solder2.png)
+
+2. Debian/Ubuntu:
+
+- Get python package:
+```shell
+sudo apt install python3.14-venv
+```
+- Create virtual env. :
+```shell
+sudo python3 -m venv esptoolenv
+```
+- Activate it:
+```shell
+source esptoolenv/bin/activate
+```
+- Install lastest esptool:
+```shell
+pip install esptool
+```
+3. Backup your original firmware in case you need to restore it:
 ```shell
 esptool --port /dev/ttyUSB0 --baud 115200 read_flash 0x00000 0x400000 backup_xiaomi_compact_4.bin
 ```
-3. Write ESPHome firmware to the flash. You can use ESPHome dashboard for that. The other option is to use `esptool`:
+4. Write ESPHome firmware to the flash. You can use ESPHome dashboard for that. The other option is to use `esptool`:
 ```shell
 esptool --port /dev/ttyUSB0 --baud 115200 write-flash 0x00000  my_firmware.bin
 ```
-4. At this stage, ESPHome OTA updates should be functional. 
+![Serial port](resources/solder3.png)
+
+Remerber, the device must be power up
+![Serial port](resources/7.png)
+
+4. At this stage, ESPHome OTA updates should be functional.
+![Serial port](resources/9.png)
+
+5. You can add the device in Home Assistant
+![Serial port](resources/8.png)
+
