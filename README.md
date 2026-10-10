@@ -11,7 +11,7 @@ Create an empty project in Esphome
 ![Serial port](resources/2.png)
 ![Serial port](resources/3.png)
 
-Clic on Install to Compile and download the binary
+Copy and Past all code from "xiaomi-compact-4.yaml" then Clic on Install to Compile and download the binary
 ![Serial port](resources/4.png)
 ![Serial port](resources/5.png)
 ![Serial port](resources/6.png)
