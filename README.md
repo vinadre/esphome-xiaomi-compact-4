@@ -11,7 +11,7 @@ Create an empty project in Esphome
 ![Serial port](resources/2.png)
 ![Serial port](resources/3.png)
 
-Copy and Past all code from "xiaomi-compact-4.yaml" then Clic on Install to Compile and download the binary
+Copy and Past all code from [xiaomi-compact-4.yaml](xiaomi-compact-4.yaml) then Clic on Install to Compile and download the binary
 ![Serial port](resources/4.png)
 ![Serial port](resources/5.png)
 ![Serial port](resources/6.png)
@@ -19,6 +19,7 @@ Copy and Past all code from "xiaomi-compact-4.yaml" then Clic on Install to Comp
 ### Flashing
 The device contains an ESP32-WROOM-32D module on the main PCB.
 1. To replace original firmware, you need to disassemble the device and connect serial adapter to the pins next to ESP32:
+[disassemble-guide.md](disassemble-guide.md)
 
 ![Serial port](resources/serial.jpg)
 ![Serial port](resources/solder1.png)
