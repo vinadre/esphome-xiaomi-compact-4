@@ -55,7 +55,7 @@ esptool --port /dev/ttyUSB0 --baud 115200 write-flash 0x00000  my_firmware.bin
 ```
 ![Serial port](resources/solder3.png)
 
-Remerber, The device must be powered on, Connect all the plugs and restore power.
+Please note: The device must be powered on, Connect all the plugs and restore power.
 ![Serial port](resources/7.png)
 
 4. At this stage, ESPHome OTA updates should be functional.
