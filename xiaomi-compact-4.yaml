@@ -1,10 +1,12 @@
 esphome:
+  name: xiaomi-compact-4
+  friendly_name: Xiaomi Compact 4
   on_boot: 
     then:
       - switch.turn_on: motorEn
       - lambda: |-
           id(devEnabled).publish_state(false);
-
+          
 esp32:
   variant: ESP32
   board: esp32dev
@@ -16,8 +18,22 @@ esp32:
     advanced:
       ignore_efuse_mac_crc: True
       ignore_efuse_custom_mac: True
+      
+logger:
+
+api:
+  encryption:
+    key: "ySXeohOM3oHej3sIzuJTl2j6LYy3+xP/Y0sTW4L2Jxk="
+
+ota:
+  - platform: esphome
 
 wifi:
+  ssid: !secret wifi_iot_ssid
+  password: !secret wifi_iot_password
+  ap:
+    ssid: xiaomi-compact- Fallback Hotspot
+    password: "8hBiWDBa9A3Q"
   id: wifiClient
   on_connect: 
     then:
@@ -26,8 +42,8 @@ wifi:
   on_disconnect: 
     then:
       - lambda: |-
-          id(wifiConnected).publish_state(false);
-          
+          id(wifiConnected).publish_state(false);    
+
 web_server:
   include_internal: True
 
@@ -68,7 +84,6 @@ switch:
             static const int BUTTON_LED_OFF = 0x00;
             auto val = x ? BUTTON_LED_ON : BUTTON_LED_OFF;
             id(cmdHidBacklightOnOffButton).write_bytes(val, 0, 0);
-
   - platform: template
     name: "HID Backlight - Brightness Change Button"
     id: hidBacklightBrightnessChangeButton
@@ -142,13 +157,14 @@ interval:
           data: [0x11, 0x02, 0x0B, 0x01, 0xE1]     
       - delay: 100ms            
       - lambda: |-
-          static std::deque<uint8_t> buf;
+          static uint8_t buf[64];
+          static int buf_len = 0;
           const int FRAME_LEN = 20;
 
           // fill buffer
           uint8_t tmp;
-          while (buf.size() < FRAME_LEN && id(pm25uart).read_byte(&tmp)) {
-            buf.push_back(tmp);
+          while (buf_len < 64 && id(pm25uart).read_byte(&tmp)) {
+            buf[buf_len++] = tmp;
           }
 
           const uint8_t H0 = 0x16;
@@ -159,25 +175,32 @@ interval:
           while (true) {
 
             // need at least header
-            if (buf.size() < 3) break;
+            if (buf_len < 3) break;
 
             // align on header
-            while (buf.size() >= 3 &&
+            while (buf_len >= 3 &&
                    !(buf[0] == H0 && buf[1] == H1 && buf[2] == H2)) {
-              buf.pop_front();
+              for (int i = 0; i < buf_len - 1; i++) {
+                buf[i] = buf[i + 1];
+              }
+              buf_len--;
             }
 
-            if (buf.size() < 3) break;
+            if (buf_len < 3) break;
 
             // wait until full frame collected
-            if ((int)buf.size() < FRAME_LEN) break;
+            if (buf_len < FRAME_LEN) break;
 
             // we have a full frame
             uint8_t frame[FRAME_LEN];
-            for (int i=0;i<FRAME_LEN;i++) {
-              frame[i] = buf.front();
-              buf.pop_front();
+            for (int i=0; i<FRAME_LEN; i++) {
+              frame[i] = buf[i];
             }
+            
+            for (int i = 0; i < buf_len - FRAME_LEN; i++) {
+              buf[i] = buf[i + FRAME_LEN];
+            }
+            buf_len -= FRAME_LEN;
 
             uint16_t pm25val = (((uint16_t)frame[15])<<8) | (frame[16]);
             id(pm25sensor).publish_state(pm25val);            
@@ -204,10 +227,13 @@ binary_sensor:
                     then:
                       - script.execute: childLockNotification
                     else:
+                      - rtttl.play:
+                          id: sound
+                          rtttl: "Button:d=8,o=6,b=140:16g6,32p"
                       - select.next: devMode
                       - if:
                           condition:
-                            lambda: "return id(brightness).state == \"ZERO\";"
+                            lambda: "return id(brightness)->current_option() == \"ZERO\";"
                           then:
                             - select.set:
                                 id: brightness
@@ -256,6 +282,9 @@ binary_sensor:
                     then:
                       - script.execute: childLockNotification
                     else:
+                      - rtttl.play:
+                          id: sound
+                          rtttl: "Button:d=8,o=6,b=140:16g6,32p"
                       - select.next: brightness
   - platform: gpio
     pin: 
@@ -272,6 +301,9 @@ binary_sensor:
               then:
                 - script.execute: childLockNotification
               else:
+                - rtttl.play:
+                    id: sound
+                    rtttl: "Button:d=8,o=6,b=140:16g6,32p"
                 - lambda: |-
                     auto enabled = id(devEnabled).state;
                     id(devEnabled).publish_state(!enabled);                                          
@@ -559,7 +591,7 @@ script:
     then:
       - lambda: |-
           ESP_LOGD("script", "Update HID");
-          std::string brightnessMode = id(brightness).state;
+          std::string brightnessMode = id(brightness)->current_option().str();
           bool isDevEnabled = id(devEnabled).state;
           bool isFullBacklight = brightnessMode == "FULL";
           bool isNoBacklight = brightnessMode == "ZERO";
@@ -575,7 +607,8 @@ script:
           id(hidBacklightModeChangeButton).publish_state(!disableHid);
           id(hidBacklightBrightnessChangeButton).publish_state(!disableHid);
           id(hidBacklightOnOffButton).publish_state(true);
-          id(hidMode).make_call().set_option(disableHid ? "TURNOFF" : id(devMode).state ).perform();
+          std::string currentDevMode = id(devMode)->current_option().str();
+          id(hidMode)->make_call().set_option(disableHid ? "TURNOFF" : currentDevMode ).perform();
           id(hidChildLock).publish_state(bool(id(childLock).state));
           id(hidWifiConnected).publish_state(disableHid ? false : bool(id(wifiConnected).state));
           id(hidReplaceFilter).publish_state(disableHid ? false : bool(id(replaceFilter).state));
@@ -615,7 +648,7 @@ script:
               return id(devEnabled).state;
           then:
             - lambda: |-
-                auto mode = id(devMode).state;
+                std::string mode = id(devMode)->current_option().str();
                 auto favSpeed = id(motorSpeedFav).state;
                 float motorSetpoint = 0; // 0-100
                 if (mode == "AUTO") {
@@ -666,5 +699,3 @@ button:
         - lambda: |-
             id(filterUsage).update(); 
             id(replaceFilter).loop();
-            
-            
